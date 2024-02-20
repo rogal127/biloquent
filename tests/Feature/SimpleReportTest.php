@@ -2,8 +2,12 @@
 
 declare(strict_types=1);
 
+use Workbench\App\Models\Lead;
+use Workbench\App\Models\LeadCampaign;
 use Workbench\App\Models\Order;
+use Workbench\App\Models\User;
 use Workbench\App\Reports\OrderReport;
+use Workbench\App\Reports\UserReport;
 
 test('count summary', function () {
     Order::create(['no' => '#001', 'value' => 2000, 'created_at' => '2023-11-01']);
@@ -22,6 +26,28 @@ test('count summary', function () {
 
     expect($report->get()->toArray())->toBe([
         ['year' => 2023, 'total_orders' => 2],
+    ]);
+});
+
+test('count leads', function () {
+    $leadCampaign = LeadCampaign::create(['name' => 'Campaign 1']);
+    $user1 = User::create(['email' => 'a@savicki.pl', 'created_at' => '2023-11-01']);
+    $user2 = User::create(['email' => 'b@savicki.pl', 'created_at' => '2023-11-01']);
+    Lead::create(['email' => $user1->email, 'customer_user_id' => $user1->id, 'lead_campaign_id' => $leadCampaign->id, 'created_at' => '2023-11-01']);
+    Lead::create(['email' => $user2->email, 'customer_user_id' => $user2->id, 'lead_campaign_id' => $leadCampaign->id, 'created_at' => '2023-11-01']);
+
+    $report = UserReport::query()
+        ->grouping(['year'])
+        ->summary(['total_leads'])
+        ->enhance(function ($q) {
+            $q->whereRelation('leads.lead_campaign', 'customer_user_id', 'users.id');
+        })
+        ->prepare();
+
+    expect($report->toRawSql())->toBe('with `user_reports` as (select `leads`.`created_at` as `orders_created_at`, `orders`.`id` as `total_orders` from `orders` where year(`orders`.`created_at`) = 2023) select YEAR(orders_created_at) as year, COUNT(total_orders) as total_orders from `order_reports` group by YEAR(orders_created_at)');
+
+    expect($report->get()->toArray())->toBe([
+        ['year' => 2023, 'total_leads' => 2],
     ]);
 });
 
