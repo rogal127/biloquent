@@ -5,7 +5,7 @@ namespace Workbench\App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class User extends Model
+class Customer extends Model
 {
     protected $fillable = ['email'];
 

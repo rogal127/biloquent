@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
+use Workbench\App\Models\Customer;
 use Workbench\App\Models\Lead;
 use Workbench\App\Models\LeadCampaign;
 use Workbench\App\Models\Order;
-use Workbench\App\Models\User;
 use Workbench\App\Reports\OrderReport;
 use Workbench\App\Reports\UserReport;
 
@@ -31,23 +31,24 @@ test('count summary', function () {
 
 test('count leads', function () {
     $leadCampaign = LeadCampaign::create(['name' => 'Campaign 1']);
-    $user1 = User::create(['email' => 'a@savicki.pl', 'created_at' => '2023-11-01']);
-    $user2 = User::create(['email' => 'b@savicki.pl', 'created_at' => '2023-11-01']);
-    Lead::create(['email' => $user1->email, 'customer_user_id' => $user1->id, 'lead_campaign_id' => $leadCampaign->id, 'created_at' => '2023-11-01']);
-    Lead::create(['email' => $user2->email, 'customer_user_id' => $user2->id, 'lead_campaign_id' => $leadCampaign->id, 'created_at' => '2023-11-01']);
+    $user1 = Customer::create(['email' => 'a@savicki.pl', 'created_at' => '2023-11-01']);
+    $user2 = Customer::create(['email' => 'b@savicki.pl', 'created_at' => '2023-11-01']);
+    Lead::create(['email' => $user1->email, 'customer_id' => $user1->id, 'lead_campaign_id' => $leadCampaign->id, 'created_at' => '2023-11-01']);
+    Lead::create(['email' => $user2->email, 'customer_id' => $user2->id, 'lead_campaign_id' => $leadCampaign->id, 'created_at' => '2023-11-01']);
 
     $report = UserReport::query()
-        ->grouping(['year'])
-        ->summary(['total_leads'])
+        ->grouping(['year', 'lead_campaign_id'])
+        ->summary(['total_users'])
         ->enhance(function ($q) {
-            $q->whereRelation('leads.lead_campaign', 'customer_user_id', 'users.id');
+            $q->whereYear('customers.created_at', 2023)->whereRelation('leads', 'leads.customer_id', 'customers.id');
         })
+        ->with(['leads' => fn ($q) => $q->select('id', 'customer_id', 'lead_campaign_id')])
         ->prepare();
 
-    expect($report->toRawSql())->toBe('with `user_reports` as (select `leads`.`created_at` as `orders_created_at`, `orders`.`id` as `total_orders` from `orders` where year(`orders`.`created_at`) = 2023) select YEAR(orders_created_at) as year, COUNT(total_orders) as total_orders from `order_reports` group by YEAR(orders_created_at)');
+    expect($report->toRawSql())->toBe("with `user_reports` as (select `customers`.`created_at` as `customers_created_at`, `leads`.`lead_campaign_id` as `lead_campaign_id`, `customers`.`id` as `total_users` from `customers` where year(`customers`.`created_at`) = 2023 and exists (select * from `leads` where `customers`.`id` = `leads`.`customer_id` and `leads`.`customer_id` = 'customers.id')) select YEAR(customers_created_at) as year, lead_campaign_id as lead_campaign_id, COUNT(total_users) as total_users from `user_reports` group by YEAR(customers_created_at), lead_campaign_id");
 
     expect($report->get()->toArray())->toBe([
-        ['year' => 2023, 'total_leads' => 2],
+        ['year' => 2023, 'total_users' => 2],
     ]);
 });
 

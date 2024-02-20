@@ -2,14 +2,16 @@
 
 namespace Workbench\App\Reports;
 
-use Illuminate\Contracts\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Webard\Biloquent\Aggregators\Avg;
-use Webard\Biloquent\Aggregators\Count;
-use Webard\Biloquent\Aggregators\Sum;
 use Webard\Biloquent\Report;
+use Workbench\App\Models\Lead;
 use Workbench\App\Models\Channel;
-use Workbench\App\Models\Order;
+use Workbench\App\Models\Customer;
+use Webard\Biloquent\Aggregators\Avg;
+use Webard\Biloquent\Aggregators\Sum;
+use Webard\Biloquent\Aggregators\Count;
+use Illuminate\Contracts\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class UserReport extends Report
 {
@@ -19,29 +21,29 @@ class UserReport extends Report
 
     public function dataset(): Builder
     {
-        return Order::query();
+        return Customer::query();
     }
 
     public function aggregators(): array
     {
         return [
-            'total_leads' => Count::field('total_leads', 'leads.id'),
+            'total_users' => Count::field('total_users', 'customers.id'),
         ];
     }
 
-    public function channel(): BelongsTo
+    public function leads(): HasMany
     {
-        return $this->belongsTo(Channel::class);
+        return $this->hasMany(Lead::class);
     }
 
     public function groups(): array
     {
         return [
-            'day' => ['aggregator' => 'DAY(orders_created_at)', 'field' => 'orders.created_at as orders_created_at'],
-            'month' => ['aggregator' => 'MONTH(orders_created_at)', 'field' => 'orders.created_at as orders_created_at'],
-            'year' => ['aggregator' => 'YEAR(orders_created_at)', 'field' => 'orders.created_at as orders_created_at'],
-            'date' => ['aggregator' => 'DATE(orders_created_at)', 'field' => 'orders.created_at as orders_created_at'],
-            'lead_campaign_id' => ['field' => 'users.leads.lead_campaign_id as lead_campaign_id', 'aggregator' => 'lead_campaign_id'],
+            'day' => ['aggregator' => 'DAY(customers_created_at)', 'field' => 'customers.created_at as customers_created_at'],
+            'month' => ['aggregator' => 'MONTH(customers_created_at)', 'field' => 'customers.created_at as customers_created_at'],
+            'year' => ['aggregator' => 'YEAR(customers_created_at)', 'field' => 'customers.created_at as customers_created_at'],
+            'date' => ['aggregator' => 'DATE(customers_created_at)', 'field' => 'customers.created_at as customers_created_at'],
+            'lead_campaign_id' => ['field' => 'leads.lead_campaign_id as lead_campaign_id', 'aggregator' => 'lead_campaign_id'],
         ];
     }
 }

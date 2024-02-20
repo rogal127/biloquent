@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('leads', function (Blueprint $table) {
             $table->id();
             $table->string('email');
-            $table->foreignId('customer_user_id')->constrained('users', 'id');
+            $table->foreignId('customer_id')->constrained();
             $table->foreignId('lead_campaign_id')->constrained();
             $table->timestamps();
         });
